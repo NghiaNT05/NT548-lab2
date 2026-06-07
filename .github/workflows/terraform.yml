@@ -65,7 +65,24 @@ jobs:
         run: pip install --disable-pip-version-check checkov
 
       - name: Chay Checkov
-        run: checkov --directory terraform --framework terraform --compact --soft-fail
+        run: |
+          checkov \
+            --directory terraform \
+            --framework terraform \
+            --compact \
+            --soft-fail \
+            --output cli \
+            --output json \
+            --output-file-path console,checkov-report
+
+      - name: Luu report Checkov
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkov-report
+          path: checkov-report/results_json.json
+          if-no-files-found: warn
+          retention-days: 7
 
   deploy:
     name: Plan apply destroy
@@ -116,6 +133,26 @@ jobs:
           TF_VAR_aws_region: ${{ secrets.AWS_REGION }}
         run: terraform plan -out=tfplan
 
+      - name: Tao plan report
+        if: github.event_name != 'workflow_dispatch' || inputs.action != 'destroy'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform show -no-color tfplan > plan.txt
+          {
+            echo "## Terraform plan"
+            echo '```text'
+            tail -n 80 plan.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Luu plan report
+        if: github.event_name != 'workflow_dispatch' || inputs.action != 'destroy'
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: ${{ env.TF_WORKING_DIR }}/plan.txt
+          retention-days: 7
+
       - name: Terraform apply
         if: github.event_name == 'workflow_dispatch' && inputs.action == 'apply'
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -123,6 +160,26 @@ jobs:
           TF_VAR_my_ip: ${{ secrets.MY_IP }}
           TF_VAR_aws_region: ${{ secrets.AWS_REGION }}
         run: terraform apply -auto-approve tfplan
+
+      - name: Luu output sau apply
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'apply'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform output -no-color > outputs.txt
+          {
+            echo "## Terraform outputs"
+            echo '```text'
+            cat outputs.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload output
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'apply'
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-outputs
+          path: ${{ env.TF_WORKING_DIR }}/outputs.txt
+          retention-days: 7
 
       - name: Terraform destroy
         if: github.event_name == 'workflow_dispatch' && inputs.action == 'destroy'

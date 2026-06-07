@@ -35,6 +35,23 @@ terraform destroy
 `apply` và `destroy` chỉ chạy bằng `workflow_dispatch`. Terraform state được
 lưu trong S3 backend.
 
+Workflow được kích hoạt khi:
+
+- Có pull request thay đổi thư mục `terraform/` hoặc file workflow.
+- Có push vào nhánh `main` thay đổi các file trên.
+- Chạy thủ công bằng `workflow_dispatch`.
+
+Pull request chỉ chạy kiểm tra. Push vào `main` chạy kiểm tra và plan. Khi chạy
+thủ công có thể chọn `plan`, `apply` hoặc `destroy`.
+
+Kết quả được lưu trong GitHub Actions Artifacts trong 7 ngày:
+
+- `checkov-report`: báo cáo Checkov dạng JSON.
+- `terraform-plan`: kết quả plan dạng text.
+- `terraform-outputs`: output sau khi apply.
+
+Phần cuối của plan và output cũng được ghi vào Job Summary.
+
 GitHub environment `aws-dev` cần các secret:
 
 ```text
