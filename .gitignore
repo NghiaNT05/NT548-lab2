@@ -1,0 +1,30 @@
+# Terraform state - chứa sensitive data, không commit
+*.tfstate
+*.tfstate.backup
+*.tfstate.lock.info
+
+# Terraform cache
+.terraform/
+.terraform.lock.hcl
+
+# Terraform variable overrides có thể chứa IP/credentials
+*.auto.tfvars
+
+# SSH keys - tuyệt đối không commit
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+
+# AWS credentials
+.aws/
+credentials
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp

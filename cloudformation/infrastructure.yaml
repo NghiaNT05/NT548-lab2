@@ -1,0 +1,286 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  NT548 - Lab 01: Trien khai ha tang AWS (VPC, Subnets, IGW, NAT GW,
+  Route Tables, Security Groups, EC2) bang CloudFormation.
+
+# ===========================================================================
+# Parameters
+# ===========================================================================
+Parameters:
+  ProjectName:
+    Type: String
+    Default: nt548-lab01
+    Description: Ten project, dung lam prefix cho cac resource
+
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+
+  PublicSubnetCidr:
+    Type: String
+    Default: 10.0.1.0/24
+
+  PrivateSubnetCidr:
+    Type: String
+    Default: 10.0.11.0/24
+
+  AvailabilityZone:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Default: us-east-1a
+
+  MyIp:
+    Type: String
+    Description: IP cua ban (dinh dang x.x.x.x/32) de whitelist SSH vao Public EC2
+    Default: 0.0.0.0/0
+
+  AmiId:
+    Type: AWS::EC2::Image::Id
+    Description: AMI ID (Amazon Linux 2023)
+    Default: ami-0c101f26f147fa7fd
+
+  InstanceType:
+    Type: String
+    Default: t2.micro
+    AllowedValues: [t2.micro, t3.micro, t3.small]
+
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Ten Key Pair da tao san tren AWS Console
+
+# ===========================================================================
+# Resources
+# ===========================================================================
+Resources:
+
+  # ── VPC ──────────────────────────────────────────────────────────────────
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-vpc"
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # ── Internet Gateway ──────────────────────────────────────────────────────
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-igw"
+
+  AttachInternetGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # ── Public Subnet ─────────────────────────────────────────────────────────
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnetCidr
+      AvailabilityZone: !Ref AvailabilityZone
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-public-subnet"
+        - Key: Type
+          Value: Public
+
+  # ── Private Subnet ────────────────────────────────────────────────────────
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateSubnetCidr
+      AvailabilityZone: !Ref AvailabilityZone
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-private-subnet"
+        - Key: Type
+          Value: Private
+
+  # ── NAT Gateway ───────────────────────────────────────────────────────────
+  NatElasticIP:
+    Type: AWS::EC2::EIP
+    DependsOn: AttachInternetGateway
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-nat-eip"
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatElasticIP.AllocationId
+      SubnetId: !Ref PublicSubnet
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-nat-gw"
+
+  # ── Public Route Table ────────────────────────────────────────────────────
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-public-rt"
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachInternetGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  # ── Private Route Table ───────────────────────────────────────────────────
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-private-rt"
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateRouteTable
+
+  # ── Security Groups ───────────────────────────────────────────────────────
+  PublicEC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub "${ProjectName}-public-ec2-sg"
+      GroupDescription: "Cho phep SSH tu IP cu the vao Public EC2"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref MyIp
+          Description: "SSH from my IP"
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          FromPort: 0
+          ToPort: 0
+          CidrIp: 0.0.0.0/0
+          Description: "Allow all outbound"
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-public-ec2-sg"
+
+  PrivateEC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub "${ProjectName}-private-ec2-sg"
+      GroupDescription: "Cho phep SSH tu Public EC2 vao Private EC2"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref PublicEC2SecurityGroup
+          Description: "SSH from Public EC2 SG"
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          FromPort: 0
+          ToPort: 0
+          CidrIp: 0.0.0.0/0
+          Description: "Allow all outbound"
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-private-ec2-sg"
+
+  # ── EC2 Instances ─────────────────────────────────────────────────────────
+  PublicEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AmiId
+      InstanceType: !Ref InstanceType
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref PublicEC2SecurityGroup
+      KeyName: !Ref KeyPairName
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-public-ec2"
+        - Key: Role
+          Value: Bastion
+
+  PrivateEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AmiId
+      InstanceType: !Ref InstanceType
+      SubnetId: !Ref PrivateSubnet
+      SecurityGroupIds:
+        - !Ref PrivateEC2SecurityGroup
+      KeyName: !Ref KeyPairName
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-private-ec2"
+        - Key: Role
+          Value: App
+
+# ===========================================================================
+# Outputs
+# ===========================================================================
+Outputs:
+  VpcId:
+    Description: ID cua VPC
+    Value: !Ref VPC
+    Export:
+      Name: !Sub "${ProjectName}-VpcId"
+
+  PublicSubnetId:
+    Description: ID cua Public Subnet
+    Value: !Ref PublicSubnet
+    Export:
+      Name: !Sub "${ProjectName}-PublicSubnetId"
+
+  PrivateSubnetId:
+    Description: ID cua Private Subnet
+    Value: !Ref PrivateSubnet
+    Export:
+      Name: !Sub "${ProjectName}-PrivateSubnetId"
+
+  NatGatewayId:
+    Description: ID cua NAT Gateway
+    Value: !Ref NatGateway
+
+  NatElasticIp:
+    Description: Elastic IP cua NAT Gateway
+    Value: !Ref NatElasticIP
+
+  PublicEC2PublicIp:
+    Description: Public IP de SSH vao Public EC2 (Bastion)
+    Value: !GetAtt PublicEC2Instance.PublicIp
+
+  PrivateEC2PrivateIp:
+    Description: Private IP cua Private EC2
+    Value: !GetAtt PrivateEC2Instance.PrivateIp
