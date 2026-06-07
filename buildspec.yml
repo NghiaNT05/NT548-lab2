@@ -1,0 +1,26 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.12
+    commands:
+      - python -m pip install --upgrade pip
+      - pip install cfn-lint taskcat
+
+  pre_build:
+    commands:
+      - cfn-lint cloudformation/*.yaml
+
+  build:
+    commands:
+      - taskcat test run --output-directory taskcat_outputs
+
+artifacts:
+  files:
+    - "**/*"
+    - "taskcat_outputs/**/*"
+
+cache:
+  paths:
+    - "/root/.cache/pip/**/*"

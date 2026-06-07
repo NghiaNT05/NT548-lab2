@@ -5,8 +5,8 @@ variable "project" {
 variable "ami_id" {
   description = "AMI ID (Amazon Linux 2023 hoặc Ubuntu)"
   type        = string
-  # Amazon Linux 2023 tại ap-southeast-1
-  default     = "ami-0c02fb55956c7d316"
+  # Amazon Linux 2023 tại us-east-1
+  default = "ami-0c02fb55956c7d316"
 }
 
 variable "instance_type" {
@@ -36,7 +36,7 @@ variable "private_sg_id" {
 }
 
 variable "public_key_path" {
-  description = "Đường dẫn tới file public key SSH (ví dụ: ~/.ssh/id_rsa.pub)"
+  description = "Đường dẫn tới file public key SSH"
   type        = string
   default     = "~/.ssh/id_rsa.pub"
 }

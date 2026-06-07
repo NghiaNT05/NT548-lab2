@@ -1,0 +1,133 @@
+name: Deploy Terraform
+
+on:
+  pull_request:
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform.yml"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Chon lenh Terraform
+        required: true
+        default: plan
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+
+permissions:
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  TF_WORKING_DIR: terraform/environments/dev
+
+jobs:
+  quality:
+    name: Kiem tra Terraform
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cai Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.15.4
+
+      - name: Tao SSH key tam
+        run: |
+          ssh-keygen -t ed25519 -N "" -f /tmp/nt548-lab2-key
+          echo "TF_VAR_public_key_path=/tmp/nt548-lab2-key.pub" >> "$GITHUB_ENV"
+
+      - name: Kiem tra format
+        run: terraform fmt -check -recursive terraform
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform validate
+
+      - name: Cai Checkov
+        run: pip install --disable-pip-version-check checkov
+
+      - name: Chay Checkov
+        run: checkov --directory terraform --framework terraform --compact --soft-fail
+
+  deploy:
+    name: Plan apply destroy
+    needs: quality
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: aws-dev
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cai Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.15.4
+
+      - name: Cau hinh AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Tao file public key
+        env:
+          SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+        run: |
+          install -m 700 -d /tmp/nt548
+          printf '%s\n' "$SSH_PUBLIC_KEY" > /tmp/nt548/id_ed25519.pub
+          echo "TF_VAR_public_key_path=/tmp/nt548/id_ed25519.pub" >> "$GITHUB_ENV"
+
+      - name: Terraform init voi S3
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="region=${{ secrets.AWS_REGION }}"
+
+      - name: Terraform plan
+        if: github.event_name != 'workflow_dispatch' || inputs.action != 'destroy'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        env:
+          TF_VAR_my_ip: ${{ secrets.MY_IP }}
+          TF_VAR_aws_region: ${{ secrets.AWS_REGION }}
+        run: terraform plan -out=tfplan
+
+      - name: Terraform apply
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'apply'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        env:
+          TF_VAR_my_ip: ${{ secrets.MY_IP }}
+          TF_VAR_aws_region: ${{ secrets.AWS_REGION }}
+        run: terraform apply -auto-approve tfplan
+
+      - name: Terraform destroy
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'destroy'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        env:
+          TF_VAR_my_ip: ${{ secrets.MY_IP }}
+          TF_VAR_aws_region: ${{ secrets.AWS_REGION }}
+        run: terraform destroy -auto-approve

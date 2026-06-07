@@ -7,7 +7,7 @@ variable "aws_region" {
 variable "project" {
   description = "Tên project"
   type        = string
-  default     = "nt548-lab01"
+  default     = "nt548-lab2"
 }
 
 variable "vpc_cidr" {
@@ -36,7 +36,7 @@ variable "my_ip" {
 }
 
 variable "ami_id" {
-  description = "Amazon Linux 2023 AMI tại ap-southeast-1"
+  description = "Amazon Linux 2023 AMI tại us-east-1"
   type        = string
   default     = "ami-0c02fb55956c7d316"
 }

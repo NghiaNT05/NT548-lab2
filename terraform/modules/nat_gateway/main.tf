@@ -18,6 +18,4 @@ resource "aws_nat_gateway" "this" {
   tags = merge(var.tags, {
     Name = "${var.project}-nat-gw"
   })
-
-  depends_on = [var.internet_gateway_id]
 }

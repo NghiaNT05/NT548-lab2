@@ -1,0 +1,14 @@
+project:
+  name: nt548-lab2
+  regions:
+    - us-east-1
+
+tests:
+  infrastructure:
+    template: cloudformation/infrastructure.yaml
+    parameters:
+      ProjectName: nt548-lab2-taskcat
+      AvailabilityZone: us-east-1a
+      MyIp: 127.0.0.1/32
+      AmiId: ami-0c101f26f147fa7fd
+      InstanceType: t2.micro

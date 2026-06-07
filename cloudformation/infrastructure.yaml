@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >
-  NT548 - Lab 01: Trien khai ha tang AWS (VPC, Subnets, IGW, NAT GW,
-  Route Tables, Security Groups, EC2) bang CloudFormation.
+  NT548 - Lab 02: Tai su dung ha tang Lab 1 (VPC, Subnets, IGW, NAT GW,
+  Route Tables, Security Groups, EC2) va trien khai bang CodePipeline.
 
 # ===========================================================================
 # Parameters
@@ -9,7 +9,7 @@ Description: >
 Parameters:
   ProjectName:
     Type: String
-    Default: nt548-lab01
+    Default: nt548-lab2
     Description: Ten project, dung lam prefix cho cac resource
 
   VpcCidr:
@@ -31,7 +31,8 @@ Parameters:
   MyIp:
     Type: String
     Description: IP cua ban (dinh dang x.x.x.x/32) de whitelist SSH vao Public EC2
-    Default: 0.0.0.0/0
+    Default: 127.0.0.1/32
+    AllowedPattern: ^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$
 
   AmiId:
     Type: AWS::EC2::Image::Id
@@ -44,8 +45,12 @@ Parameters:
     AllowedValues: [t2.micro, t3.micro, t3.small]
 
   KeyPairName:
-    Type: AWS::EC2::KeyPair::KeyName
-    Description: Ten Key Pair da tao san tren AWS Console
+    Type: String
+    Default: ""
+    Description: Ten Key Pair da tao san; co the de trong khi Taskcat kiem thu
+
+Conditions:
+  HasKeyPair: !Not [!Equals [!Ref KeyPairName, ""]]
 
 # ===========================================================================
 # Resources
@@ -225,7 +230,7 @@ Resources:
       SubnetId: !Ref PublicSubnet
       SecurityGroupIds:
         - !Ref PublicEC2SecurityGroup
-      KeyName: !Ref KeyPairName
+      KeyName: !If [HasKeyPair, !Ref KeyPairName, !Ref "AWS::NoValue"]
       Tags:
         - Key: Name
           Value: !Sub "${ProjectName}-public-ec2"
@@ -240,7 +245,7 @@ Resources:
       SubnetId: !Ref PrivateSubnet
       SecurityGroupIds:
         - !Ref PrivateEC2SecurityGroup
-      KeyName: !Ref KeyPairName
+      KeyName: !If [HasKeyPair, !Ref KeyPairName, !Ref "AWS::NoValue"]
       Tags:
         - Key: Name
           Value: !Sub "${ProjectName}-private-ec2"

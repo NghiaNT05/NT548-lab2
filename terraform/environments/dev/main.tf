@@ -4,7 +4,7 @@
 ###############################################################################
 
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.10.0"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -21,10 +21,9 @@ provider "aws" {
 module "nat_gateway" {
   source = "../../modules/nat_gateway"
 
-  project             = var.project
-  public_subnet_id    = module.vpc.public_subnet_ids[0]
-  internet_gateway_id = module.vpc.internet_gateway_id
-  tags                = local.common_tags
+  project          = var.project
+  public_subnet_id = module.vpc.public_subnet_ids[0]
+  tags             = local.common_tags
 
   # NAT GW phụ thuộc VPC tạo trước
   depends_on = [module.vpc]

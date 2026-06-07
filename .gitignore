@@ -9,6 +9,7 @@
 
 # Terraform variable overrides có thể chứa IP/credentials
 *.auto.tfvars
+terraform.tfvars
 
 # SSH keys - tuyệt đối không commit
 *.pem
@@ -28,3 +29,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Taskcat test output
+taskcat_outputs/

@@ -7,11 +7,6 @@ variable "public_subnet_id" {
   type        = string
 }
 
-variable "internet_gateway_id" {
-  description = "Dùng để đảm bảo IGW tạo trước NAT GW"
-  type        = string
-}
-
 variable "tags" {
   type    = map(string)
   default = {}
