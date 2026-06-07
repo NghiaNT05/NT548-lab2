@@ -6,21 +6,32 @@ phases:
       python: 3.12
     commands:
       - python -m pip install --upgrade pip
-      - pip install cfn-lint taskcat
+      - pip install "setuptools<81"
+      - pip install "cfn-lint[junit]==1.47.1" "taskcat==0.9.58"
+      - mkdir -p reports taskcat_outputs
 
   pre_build:
     commands:
-      - cfn-lint cloudformation/*.yaml
+      - cfn-lint -f junit cloudformation/*.yaml > reports/cfn-lint.xml
+      - cfn-lint cloudformation/*.yaml 2>&1 | tee reports/cfn-lint.txt
 
   build:
     commands:
-      - taskcat test run --output-directory taskcat_outputs
+      - taskcat test run --output-directory taskcat_outputs 2>&1 | tee reports/taskcat.txt
 
 artifacts:
   files:
     - "**/*"
+    - "reports/**/*"
     - "taskcat_outputs/**/*"
 
 cache:
   paths:
     - "/root/.cache/pip/**/*"
+
+reports:
+  cfn-lint-report:
+    files:
+      - "cfn-lint.xml"
+    base-directory: reports
+    file-format: JUNITXML

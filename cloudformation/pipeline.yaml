@@ -93,6 +93,13 @@ Resources:
                 Resource: "*"
               - Effect: Allow
                 Action:
+                  - codebuild:CreateReportGroup
+                  - codebuild:CreateReport
+                  - codebuild:UpdateReport
+                  - codebuild:BatchPutTestCases
+                Resource: "*"
+              - Effect: Allow
+                Action:
                   - s3:*
                 Resource: "*"
               - Effect: Allow
@@ -117,6 +124,12 @@ Resources:
       Source:
         Type: CODEPIPELINE
         BuildSpec: buildspec.yml
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+        S3Logs:
+          Status: ENABLED
+          Location: !Sub "${ArtifactBucket}/codebuild-logs"
 
   CloudFormationDeployRole:
     Type: AWS::IAM::Role
