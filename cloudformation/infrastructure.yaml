@@ -191,8 +191,6 @@ Resources:
           Description: "SSH from my IP"
       SecurityGroupEgress:
         - IpProtocol: "-1"
-          FromPort: 0
-          ToPort: 0
           CidrIp: 0.0.0.0/0
           Description: "Allow all outbound"
       Tags:
@@ -213,8 +211,6 @@ Resources:
           Description: "SSH from Public EC2 SG"
       SecurityGroupEgress:
         - IpProtocol: "-1"
-          FromPort: 0
-          ToPort: 0
           CidrIp: 0.0.0.0/0
           Description: "Allow all outbound"
       Tags:
