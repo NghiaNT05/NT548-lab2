@@ -110,6 +110,15 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: Kiem tra AWS va S3
+        run: |
+          aws sts get-caller-identity
+          aws s3api get-bucket-location \
+            --bucket "${{ secrets.TF_STATE_BUCKET }}"
+          aws s3api list-objects-v2 \
+            --bucket "${{ secrets.TF_STATE_BUCKET }}" \
+            --max-items 1
+
       - name: Tao file public key
         env:
           SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
