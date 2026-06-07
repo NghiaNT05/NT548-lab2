@@ -82,12 +82,13 @@ trong `.taskcat.yml`.
 Luồng pipeline:
 
 ```text
-CodeCommit -> CodeBuild -> CloudFormation
+CodeCommit -> Validate -> Plan -> Approve -> Apply
 ```
 
 CodeBuild kiểm tra template bằng `cfn-lint`, sau đó Taskcat tạo stack kiểm thử.
-Khi bước kiểm tra thành công, CodePipeline triển khai
-`cloudformation/infrastructure.yaml`.
+Khi bước kiểm tra thành công, stage `Plan` tạo CloudFormation Change Set. Pipeline
+dừng tại `Approve` để duyệt thủ công. Stage `Apply` chỉ execute Change Set sau
+khi được duyệt.
 
 ## Xóa tài nguyên
 

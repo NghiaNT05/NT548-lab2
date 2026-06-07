@@ -203,12 +203,17 @@ Resources:
                 Resource: !GetAtt BuildProject.Arn
               - Effect: Allow
                 Action:
+                  - cloudformation:CreateChangeSet
                   - cloudformation:CreateStack
+                  - cloudformation:DeleteChangeSet
                   - cloudformation:DescribeStacks
+                  - cloudformation:DescribeChangeSet
                   - cloudformation:DescribeStackEvents
                   - cloudformation:DescribeStackResources
+                  - cloudformation:ExecuteChangeSet
                   - cloudformation:GetTemplate
                   - cloudformation:GetTemplateSummary
+                  - cloudformation:ListChangeSets
                   - cloudformation:UpdateStack
                   - cloudformation:DeleteStack
                 Resource: "*"
@@ -258,17 +263,18 @@ Resources:
                 - Name: BuildArtifact
               RunOrder: 1
 
-        - Name: Deploy
+        - Name: Plan
           Actions:
-            - Name: CloudFormation
+            - Name: CreateChangeSet
               ActionTypeId:
                 Category: Deploy
                 Owner: AWS
                 Provider: CloudFormation
                 Version: "1"
               Configuration:
-                ActionMode: CREATE_UPDATE
+                ActionMode: CHANGE_SET_REPLACE
                 StackName: !Ref TargetStackName
+                ChangeSetName: !Sub "${ProjectName}-changeset"
                 TemplatePath: BuildArtifact::cloudformation/infrastructure.yaml
                 Capabilities: CAPABILITY_IAM
                 RoleArn: !GetAtt CloudFormationDeployRole.Arn
@@ -283,6 +289,32 @@ Resources:
                   }
               InputArtifacts:
                 - Name: BuildArtifact
+              RunOrder: 1
+
+        - Name: Approve
+          Actions:
+            - Name: ReviewChangeSet
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Provider: Manual
+                Version: "1"
+              Configuration:
+                CustomData: Review the CloudFormation change set before deployment
+              RunOrder: 1
+
+        - Name: Apply
+          Actions:
+            - Name: ExecuteChangeSet
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: "1"
+              Configuration:
+                ActionMode: CHANGE_SET_EXECUTE
+                StackName: !Ref TargetStackName
+                ChangeSetName: !Sub "${ProjectName}-changeset"
               RunOrder: 1
 
 Outputs:
