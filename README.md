@@ -82,13 +82,14 @@ trong `.taskcat.yml`.
 Luồng pipeline:
 
 ```text
-CodeCommit -> Validate -> Plan -> Approve -> Apply
+CodeCommit -> Validate -> Plan -> Approve -> Apply -> ApproveDestroy -> Destroy
 ```
 
 CodeBuild kiểm tra template bằng `cfn-lint`, sau đó Taskcat tạo stack kiểm thử.
 Khi bước kiểm tra thành công, stage `Plan` tạo CloudFormation Change Set. Pipeline
 dừng tại `Approve` để duyệt thủ công. Stage `Apply` chỉ execute Change Set sau
-khi được duyệt.
+khi được duyệt. Sau khi apply, pipeline dừng ở `ApproveDestroy`; chỉ duyệt bước
+này sau khi đã chụp minh chứng vì stage `Destroy` sẽ xóa stack hạ tầng.
 
 ## Xóa tài nguyên
 
