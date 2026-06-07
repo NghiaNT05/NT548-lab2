@@ -215,7 +215,6 @@ Resources:
                   - cloudformation:GetTemplateSummary
                   - cloudformation:ListChangeSets
                   - cloudformation:UpdateStack
-                  - cloudformation:DeleteStack
                 Resource: "*"
               - Effect: Allow
                 Action:
@@ -315,32 +314,6 @@ Resources:
                 ActionMode: CHANGE_SET_EXECUTE
                 StackName: !Ref TargetStackName
                 ChangeSetName: !Sub "${ProjectName}-changeset"
-              RunOrder: 1
-
-        - Name: ApproveDestroy
-          Actions:
-            - Name: ConfirmDestroy
-              ActionTypeId:
-                Category: Approval
-                Owner: AWS
-                Provider: Manual
-                Version: "1"
-              Configuration:
-                CustomData: Approve only after screenshots are completed. This deletes the infrastructure stack.
-              RunOrder: 1
-
-        - Name: Destroy
-          Actions:
-            - Name: DeleteInfrastructureStack
-              ActionTypeId:
-                Category: Deploy
-                Owner: AWS
-                Provider: CloudFormation
-                Version: "1"
-              Configuration:
-                ActionMode: DELETE_ONLY
-                StackName: !Ref TargetStackName
-                RoleArn: !GetAtt CloudFormationDeployRole.Arn
               RunOrder: 1
 
 Outputs:
