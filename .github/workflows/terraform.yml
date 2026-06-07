@@ -73,14 +73,14 @@ jobs:
             --soft-fail \
             --output cli \
             --output json \
-            --output-file-path console,checkov-report
+            --output-file-path console,checkov-report.json
 
       - name: Luu report Checkov
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: checkov-report
-          path: checkov-report/results_json.json
+          path: checkov-report.json
           if-no-files-found: warn
           retention-days: 7
 
